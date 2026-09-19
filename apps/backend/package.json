@@ -1,0 +1,23 @@
+{
+  "name": "@aegis/backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zero-knowledge encrypted relay backend for Aegis Messenger",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "worker": "node src/worker.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "sqlite3": "^6.0.1",
+    "ws": "^8.19.0"
+  }
+}

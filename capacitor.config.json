@@ -1,0 +1,12 @@
+{
+  "appId": "com.aegis.messenger",
+  "appName": "Aegis Messenger",
+  "webDir": "apps/web/dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

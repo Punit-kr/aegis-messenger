@@ -1,0 +1,43 @@
+{
+  "name": "aegis-messenger-root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Production-grade Privacy-First Messaging Application with E2EE, Zero-Knowledge Relay, and 7-Day Retention",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "start:backend": "node apps/backend/src/server.js",
+    "start:worker": "node apps/backend/src/worker.js",
+    "start:web": "node apps/web/server.js",
+    "dev": "node scripts/dev.js",
+    "test": "node tests/runner.js",
+    "test:crypto": "node tests/unit/crypto.test.js",
+    "test:auth": "node tests/unit/auth.test.js",
+    "test:retention": "node tests/unit/retention.test.js",
+    "test:lifecycle": "node tests/lifecycle/message-lifecycle.test.js",
+    "test:audit": "node tests/security/plaintext-audit.test.js",
+    "build:mobile": "node scripts/build-mobile.js",
+    "cap:sync": "node scripts/build-mobile.js && npx cap sync android",
+    "build:apk": "npm run cap:sync && cd android && gradlew.bat assembleDebug"
+  },
+  "keywords": [
+    "privacy",
+    "e2ee",
+    "signal-protocol",
+    "secure-messaging",
+    "double-ratchet",
+    "zero-knowledge"
+  ],
+  "author": "Antigravity Engineering",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}

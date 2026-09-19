@@ -1,0 +1,40 @@
+# Aegis Backend Zero-Knowledge Relay - Production Dockerfile
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# Copy root and backend configs
+COPY package.json ./
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/protocol/package.json ./packages/protocol/
+
+# Install dependencies in non-interactive mode
+RUN cd apps/backend && npm install --omit=dev
+
+# Copy source code
+COPY apps/backend ./apps/backend
+COPY packages/protocol ./packages/protocol
+
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOST=0.0.0.0
+
+# Create non-root user for principle of least privilege
+RUN addgroup -S aegis && adduser -S aegis -G aegis
+
+COPY --from=builder /app /app
+
+# Prepare persistent data directory
+RUN mkdir -p /app/apps/backend/data/media && chown -R aegis:aegis /app
+
+USER aegis
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3001/health || exit 1
+
+CMD ["node", "apps/backend/src/server.js"]

@@ -1,0 +1,8 @@
+{
+  "name": "@aegis/protocol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Core cryptographic protocol schemas, E.164 phone engine, and envelope specifications",
+  "main": "index.js",
+  "type": "module"
+}

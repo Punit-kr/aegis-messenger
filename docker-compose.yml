@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.backend
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - JWT_SECRET=${JWT_SECRET:-secret_jwt_key_must_be_changed_in_prod}
+      - REFRESH_SECRET=${REFRESH_SECRET:-secret_refresh_key_must_be_changed_in_prod}
+      - CORS_ORIGIN=*
+    volumes:
+      - aegis-data:/app/apps/backend/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.web
+    environment:
+      - NODE_ENV=production
+      - WEB_PORT=3000
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - web
+    restart: unless-stopped
+
+volumes:
+  aegis-data:

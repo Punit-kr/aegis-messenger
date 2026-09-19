@@ -1,0 +1,14 @@
+# Aegis Web Client - Production Web Server Dockerfile
+FROM node:24-alpine
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV WEB_PORT=3000
+
+COPY package.json ./
+COPY apps/web ./apps/web
+COPY packages/protocol ./packages/protocol
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]
