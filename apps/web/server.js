@@ -27,6 +27,36 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
   let reqPath = req.url.split('?')[0];
 
+  // Proxy REST API and Health check requests to the backend relay on port 3001
+  if (reqPath.startsWith('/api/') || reqPath === '/health') {
+    const backendReq = http.request(
+      {
+        hostname: '127.0.0.1',
+        port: 3001,
+        path: req.url,
+        method: req.method,
+        headers: {
+          ...req.headers,
+          host: '127.0.0.1:3001'
+        }
+      },
+      (backendRes) => {
+        res.writeHead(backendRes.statusCode, backendRes.headers);
+        backendRes.pipe(res, { end: true });
+      }
+    );
+
+    backendReq.on('error', (err) => {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'Aegis Backend Relay (port 3001) is offline. Start the backend server using "npm run start:backend" or "node scripts/dev.js".'
+      }));
+    });
+
+    req.pipe(backendReq, { end: true });
+    return;
+  }
+
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/apps/web/public/index.html';
   } else if (!reqPath.startsWith('/apps/web') && !reqPath.startsWith('/packages')) {

@@ -11,12 +11,27 @@ export function getApiBase() {
   if (custom) return custom.replace(/\/$/, '');
 
   if (typeof window !== 'undefined' && window.location) {
-    if (window.location.origin.includes(':5173') || window.location.origin.includes(':3000')) {
-      return 'http://127.0.0.1:3001';
+    // 1. Detect Capacitor native mobile runtime (Android/iOS)
+    const isCapacitor = 
+      Boolean(window.Capacitor) ||
+      window.location.protocol === 'capacitor:' ||
+      window.location.protocol === 'file:' ||
+      (window.location.hostname === 'localhost' && !window.location.port && window.location.protocol === 'https:') ||
+      window.location.origin === 'https://localhost';
+
+    if (isCapacitor) {
+      // In mobile app: default to host development relay server on local Wi-Fi / LAN
+      return 'http://192.168.1.33:3001';
     }
-    // Capacitor / file-based mobile runtime fallback
-    if (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:') {
-      return 'http://10.0.2.2:3001';
+
+    // 2. Web dev environment: port 3000 or 5173 points to backend on port 3001
+    if (window.location.port === '3000' || window.location.port === '5173') {
+      return `http://${window.location.hostname || '127.0.0.1'}:3001`;
+    }
+
+    // 3. Web client hosted directly on the relay backend
+    if (window.location.port === '3001') {
+      return '';
     }
   }
   return '';
@@ -45,7 +60,8 @@ export class ApiClient {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${API_BASE}${endpoint}`;
+    const apiBase = getApiBase();
+    const url = `${apiBase}${endpoint}`;
     const headers = { ...options.headers };
 
     if (this.accessToken && !headers['Authorization']) {
@@ -56,22 +72,32 @@ export class ApiClient {
       headers['Content-Type'] = 'application/json';
     }
 
-    let response = await fetch(url, { ...options, headers });
+    let response;
+    try {
+      response = await fetch(url, { ...options, headers });
+    } catch (networkErr) {
+      throw new Error(
+        `Unable to reach Aegis Relay Server at ${apiBase || window.location.origin}. Please ensure the server is running and accessible over your network.`
+      );
+    }
 
     // Handle token expiration & automatic rotation
     if (response.status === 401 && this.refreshToken && !endpoint.includes('/auth/refresh')) {
       try {
-        const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+        const refreshRes = await fetch(`${apiBase}/api/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken: this.refreshToken })
         });
 
         if (refreshRes.ok) {
-          const { accessToken, refreshToken } = await refreshRes.json();
-          this.setTokens(accessToken, refreshToken);
-          headers['Authorization'] = `Bearer ${accessToken}`;
-          response = await fetch(url, { ...options, headers });
+          const contentType = refreshRes.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const { accessToken, refreshToken } = await refreshRes.json();
+            this.setTokens(accessToken, refreshToken);
+            headers['Authorization'] = `Bearer ${accessToken}`;
+            response = await fetch(url, { ...options, headers });
+          }
         } else {
           this.clearTokens();
           window.dispatchEvent(new CustomEvent('aegis:auth_expired'));
@@ -81,12 +107,22 @@ export class ApiClient {
       }
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+
     if (!response.ok) {
-      let errMessage = 'Request failed';
-      try {
-        const errJson = await response.json();
-        errMessage = errJson.error || errMessage;
-      } catch (e) {}
+      let errMessage = `Request failed (HTTP ${response.status})`;
+      if (isJson) {
+        try {
+          const errJson = await response.json();
+          errMessage = errJson.error || errMessage;
+        } catch (e) {}
+      } else {
+        const text = await response.text();
+        if (text.trim().startsWith('<!DOCTYPE') || text.includes('<html')) {
+          errMessage = `Relay server endpoint not found (HTTP ${response.status} from ${url}). Ensure your Aegis backend is running.`;
+        }
+      }
       throw new Error(errMessage);
     }
 
@@ -96,6 +132,17 @@ export class ApiClient {
     }
     if (options.asArrayBuffer) {
       return response.arrayBuffer();
+    }
+
+    // Check for unexpected HTML in successful response (e.g. SPA fallback to index.html)
+    if (!isJson) {
+      const text = await response.text();
+      if (text.trim().startsWith('<!DOCTYPE') || text.includes('<html')) {
+        throw new Error(
+          `Relay server not connected (received HTML instead of API response from ${url}). Tap '⚙️ Relay Server' on the welcome screen to verify your backend address (currently: ${apiBase || 'empty'}).`
+        );
+      }
+      throw new Error(`Unexpected server response format: expected JSON, received ${contentType || 'text'}`);
     }
 
     return response.json();

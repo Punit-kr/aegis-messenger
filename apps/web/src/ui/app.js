@@ -4,7 +4,7 @@
  */
 
 import { store } from '../state/store.js';
-import { api } from '../services/api.js';
+import { api, getApiBase } from '../services/api.js';
 import { wsClient } from '../services/ws.js';
 import { webrtc } from '../services/webrtc.js';
 import { vault } from '../storage/vault.js';
@@ -14,12 +14,12 @@ import { X3DH } from '../crypto/x3dh.js';
 import { DoubleRatchetSession } from '../crypto/ratchet.js';
 import { EncryptedAttachmentManager } from '../crypto/attachments.js';
 import { computeSafetyNumber } from '../../../../packages/protocol/fingerprint.js';
-import { normalizePhoneNumber } from '../../../../packages/protocol/e164.js';
+import { normalizePhoneNumber, COUNTRY_DATA } from '../../../../packages/protocol/e164.js';
 
 export class AegisApp {
   constructor() {
     this.appEl = document.getElementById('app');
-    this.countries = [];
+    this.countries = COUNTRY_DATA;
     this.currentOtpPhone = null;
     this.otpTimer = null;
     this.activeCall = null;
@@ -45,9 +45,11 @@ export class AegisApp {
       // 2. Fetch country calling codes
       try {
         const countryRes = await api.getCountries();
-        this.countries = countryRes.countries || [];
+        if (countryRes && countryRes.countries && countryRes.countries.length > 0) {
+          this.countries = countryRes.countries;
+        }
       } catch (e) {
-        this.countries = [];
+        this.countries = COUNTRY_DATA;
       }
 
       // 3. Check authentication status
@@ -472,10 +474,10 @@ export class AegisApp {
     const btnServerConfig = document.getElementById('btn-server-config');
     if (btnServerConfig) {
       btnServerConfig.onclick = () => {
-        const cur = localStorage.getItem('aegis_server_url') || '';
+        const cur = localStorage.getItem('aegis_server_url') || getApiBase();
         const input = prompt(
-          'Enter Aegis Relay Server URL:\n(e.g., http://192.168.1.15:3001 for local Wi-Fi / LAN, or http://10.0.2.2:3001 for Android Emulator):\nLeave blank or type "default" for automatic detection.',
-          cur || (window.location.protocol === 'capacitor:' ? 'http://10.0.2.2:3001' : '')
+          'Enter Aegis Relay Server URL:\n(e.g., http://192.168.1.33:3001 for local Wi-Fi / LAN, or http://10.0.2.2:3001 for Android Emulator):\nLeave blank or type "default" for automatic detection.',
+          cur
         );
         if (input !== null) {
           const val = input.trim();

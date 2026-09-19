@@ -3,6 +3,8 @@
  * 19 Bespoke Screens and Functional Modal Views.
  */
 
+import { getApiBase } from '../services/api.js';
+
 export class UIComponents {
   // 1. Splash Screen
   static renderSplash() {
@@ -74,7 +76,7 @@ export class UIComponents {
 
           <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px;">
             <button class="btn btn-ghost" id="btn-server-config" style="font-size: 12px; padding: 6px 12px; color: var(--text-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); width: 100%;">
-              ⚙️ Relay Server: <span id="current-server-display">${typeof localStorage !== 'undefined' && localStorage.getItem('aegis_server_url') ? localStorage.getItem('aegis_server_url') : 'Auto (Default)'}</span>
+              ⚙️ Relay Server: <span id="current-server-display">${typeof localStorage !== 'undefined' && localStorage.getItem('aegis_server_url') ? localStorage.getItem('aegis_server_url') : getApiBase()}</span>
             </button>
             <div style="font-size: 11px; text-align: center; color: var(--text-muted);">
               By signing in, you agree to Aegis's End-to-End Encrypted Terms & Privacy Notice.
